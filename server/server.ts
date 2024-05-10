@@ -14,11 +14,12 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url"; // NOTE: __dirname global is not available in an ES module, so we use fileURLToPath and dirname instead to derive it
 import dotenv from "dotenv";
 import helmet from "helmet";
+import apiLayer from "./apiLayer.ts"; // NOTE: need .ts extension here for ES modules
 
 const PORT =
   process.env.npm_package_config_proxy_server_port ?? process.env.PORT ?? 3000; // defaults to 3000 if NO port is specified in EITHER package.json DEV script nor .env file (in that order)
 
-const app: Application = express();
+export const app: Application = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
@@ -26,7 +27,6 @@ app.use(helmet());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-app.use("/static", express.static(join(__dirname, "../src/assets"))); // used to serve static images from 'assets' folder
 app.use("/static", express.static(join(__dirname, "../images"))); // used to serve static images from 'images' folder
 
 // --------
@@ -48,24 +48,10 @@ if (process.env.NODE_ENV === "production") {
 
 // --------
 
-// SAMPLE ENDPOINTS
+apiLayer(); // API layer
+
 app.get("/", (_req: Request, res: Response): Response => {
-  return res.send("Hello, world!");
-});
-
-app.get("/api", (_req: Request, res: Response): Response => {
-  const onceTwice = {
-    once: "twice",
-  };
-  return res.status(200).json({ onceTwice });
-});
-
-app.post("/api", (req: Request, res: Response): Response => {
-  interface InputNumber {
-    inputNumber: number;
-  }
-  const apiResponseNumber: number = (req.body as InputNumber).inputNumber * 9;
-  return res.status(200).json({ apiResponseNumber });
+  return res.send("Server running here...");
 });
 
 // --------
