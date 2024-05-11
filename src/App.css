@@ -16,20 +16,12 @@
   z-index: -1;
 }
 
-.toDoListContainer {
+.toDoListHeader {
   display: flex;
-  margin-top: 0;
-  width: 45vw;
-  height: 50vh;
-  border-radius: 5%;
-  z-index: 10;
-}
-
-.toDoListHeaderContainer {
-  width: 45vw;
-  height: 10vh;
-  display: flex;
+  margin-top: 5vh;
   justify-content: space-between;
+  width: 40vw;
+  height: 8vh;
 }
 
 #toDoTitle {
@@ -43,17 +35,86 @@
 .modeIcon {
   display: inline;
   align-self: flex-start;
-  margin-top: 40px;
+  margin-top: 1vh;
 }
 .modeIcon:hover {
   cursor: pointer;
 }
 
-.josefin-sans-body {
+#newTaskInput {
+  margin-bottom: 2vh;
+  height: 6vh;
+  width: 40vw;
+  font-size: 18px;
+  padding-left: 25px;
+  margin-left: 15px;
+
   font-family: "Josefin Sans", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
+}
+#newTaskInput:focus {
+  outline: none;
+  border: 2px solid lightgrey !important;
+}
+
+.toDoListTableContainer {
+  display: center;
+  margin-top: 0vh;
+  width: 40vw;
+  min-height: 60vh;
+  border-radius: 5%;
+  z-index: 10;
+  background-color: transparent;
+}
+
+.checkBox:hover {
+  cursor: pointer;
+}
+
+.groupCheckboxCloseButton:hover .closeButton {
+  visibility: visible;
+}
+.closeButton {
+  background-color: transparent !important;
+  visibility: hidden;
+}
+.closeButton:hover {
+  cursor: pointer;
+}
+
+.filterButton {
+  background-color: transparent !important;
+  color: grey;
+  padding: 5px 0px;
+
+  font-family: "Josefin Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+#clearCompletedButton {
+  background-color: transparent !important;
+  color: grey;
+
+  font-family: "Josefin Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+}
+.filterButton:hover,
+#clearCompletedButton:hover {
+  color: black;
+}
+.darkTheme .filterButton:hover,
+.darkTheme #clearCompletedButton:hover {
+  color: white;
+}
+.filterButton:focus,
+.filterButton:active {
+  color: hsl(220, 98%, 61%);
+  outline: transparent;
 }
 
 .josefin-sans-header {

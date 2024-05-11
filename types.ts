@@ -1,3 +1,4 @@
+import { RefObject } from "react";
 export interface ToDoType {
   id: number;
   task: string;
@@ -9,10 +10,22 @@ export interface RequestBody {
   newTaskToAdd?: ToDoType; // only used in POST request (not in PUT or DELETE) in server/apiLayer.ts
 }
 
+export enum Mode {
+  LIGHT = "light",
+  DARK = "dark",
+}
+
 export enum FilteredState {
   ALL = "All",
   ACTIVE = "Active",
   COMPLETED = "Completed",
+}
+
+export interface FilterButtonRefsType {
+  displayFilter: FilteredState;
+  completedFilterButtonRef: RefObject<HTMLButtonElement>;
+  activeFilterButtonRef: RefObject<HTMLButtonElement>;
+  allFilterButtonRef: RefObject<HTMLButtonElement>;
 }
 
 // -----------

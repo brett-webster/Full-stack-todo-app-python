@@ -12,13 +12,31 @@ body {
   position: relative;
   z-index: -3;
 }
-
 body.lightTheme {
   background-color: var(--background-color-light);
   color: var(--text-color-light);
 }
-
 body.darkTheme {
   background-color: var(--background-color-dark);
   color: var(--text-color-dark);
+}
+
+#newTaskInput.lightTheme {
+  background-color: white;
+  color: var(--text-color-light);
+}
+#newTaskInput.darkTheme {
+  background-color: #303030;
+  color: var(--text-color-dark);
+  border: none;
+}
+
+.toDoListTable.lightTheme {
+  background-color: white;
+  color: var(--text-color-light);
+}
+.toDoListTable.darkTheme {
+  background-color: #303030;
+  color: var(--text-color-dark);
+  border: none;
 }

@@ -1,6 +1,7 @@
-import { Dispatch, SetStateAction, useEffect } from "react";
+import { Dispatch, SetStateAction, useEffect, RefObject } from "react";
 import axios from "axios";
-import { ToDoType, FilteredState } from "../types";
+import { ToDoType, FilteredState, FilterButtonRefsType } from "../types";
+import { applyFilterToApiResponse } from "./filterLogic";
 
 // --------
 
@@ -24,18 +25,19 @@ export const deleteAllCompletedTodos = async ({
     })
   )?.data;
   setToDosArrayFull(apiResponse);
-  setToDosForDisplay(
-    displayFilter === FilteredState.COMPLETED ? [] : apiResponse
-  );
-  if (displayFilter === FilteredState.COMPLETED) {
-    setItemCount(0);
-  }
+  const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
+    displayFilter,
+    apiResponse,
+    setItemCount,
+  });
+  setToDosForDisplay(filteredTasksArray);
 };
 
 // --------
 
 // API endpoint requests, each triggered by a hook
 function ApiRequests({
+  setTotalTaskCount,
   setToDosArrayFull,
   toDosArrayFull,
   setToDosForDisplay,
@@ -46,7 +48,13 @@ function ApiRequests({
   idToUpdateStatus,
   setIdToDelete,
   idToDelete,
+  displayFilter,
+  completedFilterButtonRef,
+  activeFilterButtonRef,
+  allFilterButtonRef,
+  reapplyFilterFocus,
 }: {
+  setTotalTaskCount: Dispatch<SetStateAction<number | null>>;
   setToDosArrayFull: Dispatch<SetStateAction<ToDoType[]>>;
   toDosArrayFull: ToDoType[];
   setToDosForDisplay: Dispatch<SetStateAction<ToDoType[]>>;
@@ -57,6 +65,11 @@ function ApiRequests({
   idToUpdateStatus: number | null;
   setIdToDelete: Dispatch<SetStateAction<number | null>>;
   idToDelete: number | null;
+  displayFilter: FilteredState;
+  completedFilterButtonRef: RefObject<HTMLButtonElement>;
+  activeFilterButtonRef: RefObject<HTMLButtonElement>;
+  allFilterButtonRef: RefObject<HTMLButtonElement>;
+  reapplyFilterFocus: (value: FilterButtonRefsType) => void;
 }): void {
   // READ (on initial page load only)
   useEffect(() => {
@@ -71,9 +84,16 @@ function ApiRequests({
         (toDo) => toDo.statusComplete === false
       ).length; // Tasks remaining
       setItemCount(taskCountRemaining);
+      setTotalTaskCount(apiResponse.length); // used to track and create unique IDs (avoiding dups in case of deletions)
+      allFilterButtonRef.current?.focus(); // added to re-focus on the 'All' filter button
 
       const body = document.body;
+      const newTaskInputNode = document.querySelector("#newTaskInput");
+      const toDoListTableNode = document.querySelector("#toDoListTable");
+      if (!body || !newTaskInputNode || !toDoListTableNode) return; // early exit if any elements are null
       body.classList.add("lightTheme");
+      newTaskInputNode.classList.add("lightTheme");
+      toDoListTableNode.classList.add("lightTheme");
     };
     void initialLoadOnly(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,9 +112,14 @@ function ApiRequests({
       )?.data;
       setToDosArrayFull(apiResponse);
       setToDosForDisplay(apiResponse);
+      const incrementedActiveTaskCount: number = apiResponse.filter(
+        (toDo) => toDo.statusComplete === false
+      ).length;
+      setItemCount(incrementedActiveTaskCount);
     };
     void addNewTask(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setNewTaskToAdd(null); // reset task object to be added to null (to prevent infinite dependency loop)
+    allFilterButtonRef.current?.focus(); // added to focus on the 'All' filter button on page load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(newTaskToAdd)]);
 
@@ -112,7 +137,18 @@ function ApiRequests({
         )
       )?.data;
       setToDosArrayFull(apiResponse);
-      setToDosForDisplay(apiResponse);
+      const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
+        displayFilter,
+        apiResponse,
+        setItemCount,
+      });
+      setToDosForDisplay(filteredTasksArray);
+      reapplyFilterFocus({
+        displayFilter,
+        completedFilterButtonRef,
+        activeFilterButtonRef,
+        allFilterButtonRef,
+      });
     };
     void updateTaskStatus(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setIdToUpdateStatus(null); // reset ID to update (to prevent infinite dependency loop)
@@ -130,7 +166,18 @@ function ApiRequests({
         })
       )?.data;
       setToDosArrayFull(apiResponse);
-      setToDosForDisplay(apiResponse);
+      const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
+        displayFilter,
+        apiResponse,
+        setItemCount,
+      });
+      setToDosForDisplay(filteredTasksArray);
+      reapplyFilterFocus({
+        displayFilter,
+        completedFilterButtonRef,
+        activeFilterButtonRef,
+        allFilterButtonRef,
+      });
     };
     void deleteTask(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setIdToDelete(null); // reset ID to delete (to prevent infinite dependency loop)
