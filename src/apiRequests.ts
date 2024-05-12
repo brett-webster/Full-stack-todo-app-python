@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction, useEffect, RefObject } from "react";
 import axios from "axios";
-import { ToDoType, FilteredState, FilterButtonRefsType } from "../types";
+import { ToDoType, FilteredState } from "../types";
 import { applyFilterToApiResponse } from "./filterLogic";
 
 // --------
@@ -49,10 +49,7 @@ function ApiRequests({
   setIdToDelete,
   idToDelete,
   displayFilter,
-  completedFilterButtonRef,
-  activeFilterButtonRef,
   allFilterButtonRef,
-  reapplyFilterFocus,
 }: {
   setTotalTaskCount: Dispatch<SetStateAction<number | null>>;
   setToDosArrayFull: Dispatch<SetStateAction<ToDoType[]>>;
@@ -66,10 +63,7 @@ function ApiRequests({
   setIdToDelete: Dispatch<SetStateAction<number | null>>;
   idToDelete: number | null;
   displayFilter: FilteredState;
-  completedFilterButtonRef: RefObject<HTMLButtonElement>;
-  activeFilterButtonRef: RefObject<HTMLButtonElement>;
   allFilterButtonRef: RefObject<HTMLButtonElement>;
-  reapplyFilterFocus: (value: FilterButtonRefsType) => void;
 }): void {
   // READ (on initial page load only)
   useEffect(() => {
@@ -143,12 +137,6 @@ function ApiRequests({
         setItemCount,
       });
       setToDosForDisplay(filteredTasksArray);
-      reapplyFilterFocus({
-        displayFilter,
-        completedFilterButtonRef,
-        activeFilterButtonRef,
-        allFilterButtonRef,
-      });
     };
     void updateTaskStatus(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setIdToUpdateStatus(null); // reset ID to update (to prevent infinite dependency loop)
@@ -172,12 +160,6 @@ function ApiRequests({
         setItemCount,
       });
       setToDosForDisplay(filteredTasksArray);
-      reapplyFilterFocus({
-        displayFilter,
-        completedFilterButtonRef,
-        activeFilterButtonRef,
-        allFilterButtonRef,
-      });
     };
     void deleteTask(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setIdToDelete(null); // reset ID to delete (to prevent infinite dependency loop)

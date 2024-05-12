@@ -4,28 +4,14 @@ import {
   useState,
   useRef,
   KeyboardEvent,
+  useEffect,
 } from "react";
-import {
-  Container,
-  Paper,
-  Image,
-  Input,
-  Text,
-  Button,
-  Group,
-} from "@mantine/core";
-import iconSun from "../images/icon-sun.svg";
-import iconMoon from "../images/icon-moon.svg";
+import { Input } from "@mantine/core";
 import { ToDoType, FilteredState, Mode } from "../types";
-import ApiRequests, { deleteAllCompletedTodos } from "./apiRequests";
-import {
-  filterAll,
-  filterActiveOnly,
-  filterCompletedOnly,
-  reapplyFilterFocus,
-} from "./filterLogic"; // Frontend filter logic (imported above)
-import ToDosTable from "./ToDosTable"; // Static tables applied for 'Active/Completed' filters
-import ToDosTableDnD from "./ToDosTableDnD"; // DnD only applied for 'All' filter
+import ApiRequests from "./apiRequests";
+import { reapplyFilterFocus } from "./filterLogic"; // Frontend filter logic
+import ToDoHeader from "./ToDoHeader";
+import TableContainer from "./TableContainer";
 
 // --------
 
@@ -68,13 +54,30 @@ function ToDoListContainer({
     setIdToDelete,
     idToDelete,
     displayFilter,
-    completedFilterButtonRef,
-    activeFilterButtonRef,
     allFilterButtonRef,
-    reapplyFilterFocus,
   });
 
   // --------
+
+  // Restore focus to appropriate filter upon clicking away from the filter buttons (to maintain visual indication of selected filter)
+  useEffect(() => {
+    const handleClick = () => {
+      if (document.activeElement?.id !== "newTaskInput") {
+        void reapplyFilterFocus({
+          displayFilter,
+          completedFilterButtonRef,
+          activeFilterButtonRef,
+          allFilterButtonRef,
+        }); // added to re-focus on the most recently selected filter button
+      }
+    };
+    document.body.addEventListener("click", handleClick);
+
+    // Clean up event listener when component unmounts
+    return () => {
+      document.body.removeEventListener("click", handleClick);
+    };
+  }, [displayFilter]);
 
   // helper fxn -- if the user presses the 'Enter' key, increment the total task counter & use this to create a new task using 'setNewTaskToAdd'
   const handleKeyDown = (event: KeyboardEvent): void => {
@@ -97,48 +100,7 @@ function ToDoListContainer({
   return (
     <>
       {/* HEADER -- TITLE & LIGHT/DARK MODE ICON */}
-      <Container className="toDoListHeader">
-        <Text ta="left" id="toDoTitle" className="josefin-sans-header">
-          T O D O
-        </Text>
-        <Image
-          src={mode === Mode.LIGHT ? iconMoon : iconSun}
-          className="modeIcon"
-          alt="Light or Dark Mode"
-          style={{ textAlign: "right" }}
-          width={30} // pixels
-          height={30} // pixels
-          onClick={() => {
-            setMode(mode === Mode.LIGHT ? Mode.DARK : Mode.LIGHT);
-            // Change styling theme of the body, input field, and table based on light/dark mode
-            const body = document.body;
-            const newTaskInputNode = document.querySelector("#newTaskInput");
-            const toDoListTableNode = document.querySelector(".toDoListTable");
-            if (!body || !newTaskInputNode || !toDoListTableNode) return; // early exit if any elements are null
-            if (mode === Mode.LIGHT) {
-              body.classList.remove("lightTheme");
-              body.classList.add("darkTheme");
-              newTaskInputNode.classList.remove("lightTheme");
-              newTaskInputNode.classList.add("darkTheme");
-              toDoListTableNode.classList.remove("lightTheme");
-              toDoListTableNode.classList.add("darkTheme");
-            } else {
-              body.classList.remove("darkTheme");
-              body.classList.add("lightTheme");
-              newTaskInputNode.classList.remove("darkTheme");
-              newTaskInputNode.classList.add("lightTheme");
-              toDoListTableNode.classList.remove("darkTheme");
-              toDoListTableNode.classList.add("lightTheme");
-            }
-            void reapplyFilterFocus({
-              displayFilter,
-              completedFilterButtonRef,
-              activeFilterButtonRef,
-              allFilterButtonRef,
-            }); // added to re-focus on the most recently selected filter button
-          }}
-        />
-      </Container>
+      <ToDoHeader mode={mode} setMode={setMode} />
 
       {/* NEW TASK INPUT FIELD */}
       <Input
@@ -150,136 +112,23 @@ function ToDoListContainer({
         onKeyDown={handleKeyDown}
       />
 
-      {/* TO DO LIST TABLE - TABLE + FILTER BUTTONS at BOTTOM */}
-      <Container className="toDoListTableContainer">
-        <Paper
-          withBorder
-          shadow="lg"
-          radius="md"
-          p="xl"
-          className="toDoListTable"
-        >
-          {/* DISPLAY TABLE - allow DnD for 'All' filter, static display for 'Active/Completed' filters (tracking/reconciling re-ordering of partial lists is complicated) */}
-          {displayFilter === FilteredState.ALL ? (
-            <ToDosTableDnD
-              setToDosForDisplay={setToDosForDisplay}
-              toDosForDisplay={toDosForDisplay}
-              setToDosArrayFull={setToDosArrayFull}
-              mode={mode}
-              setIdToUpdateStatus={setIdToUpdateStatus}
-              setIdToDelete={setIdToDelete}
-            />
-          ) : (
-            <ToDosTable
-              toDosForDisplay={toDosForDisplay}
-              mode={mode}
-              setIdToUpdateStatus={setIdToUpdateStatus}
-              setIdToDelete={setIdToDelete}
-            />
-          )}
-
-          {/* FOOTER -- TASK COUNT, FILTERS, CLEAR COMPLETED TASKS */}
-          <Group position="apart">
-            <Text
-              fz="xs"
-              c="dimmed"
-              style={{
-                fontFamily: '"Josefin Sans", sans-serif',
-                fontSize: "14px",
-                fontWeight: "400",
-                color: mode === Mode.LIGHT ? "lightgrey" : "grey",
-              }}
-            >
-              {itemCount} {itemCount === 1 ? "item" : "items"}{" "}
-              {displayFilter === FilteredState.COMPLETED
-                ? "completed"
-                : "remaining"}
-            </Text>
-
-            {/* 3 FILTER BUTTONS */}
-            <Group position="center" spacing="xs">
-              <Button
-                ref={allFilterButtonRef}
-                className="filterButton"
-                onClick={() =>
-                  filterAll({
-                    setToDosForDisplay,
-                    setDisplayFilter,
-                    setItemCount,
-                    toDosArrayFull,
-                  })
-                }
-              >
-                All
-              </Button>
-              <Button
-                ref={activeFilterButtonRef}
-                className="filterButton"
-                onClick={() =>
-                  filterActiveOnly({
-                    setToDosForDisplay,
-                    setDisplayFilter,
-                    setItemCount,
-                    toDosArrayFull,
-                  })
-                }
-              >
-                Active
-              </Button>
-              <Button
-                ref={completedFilterButtonRef}
-                className="filterButton"
-                onClick={() =>
-                  filterCompletedOnly({
-                    setToDosForDisplay,
-                    setDisplayFilter,
-                    setItemCount,
-                    toDosArrayFull,
-                  })
-                }
-              >
-                Completed
-              </Button>
-            </Group>
-
-            {/* CLEAR COMPLETED BUTTON */}
-            <Button
-              id="clearCompletedButton"
-              onClick={() => {
-                void deleteAllCompletedTodos({
-                  setToDosArrayFull,
-                  toDosArrayFull,
-                  setToDosForDisplay,
-                  setItemCount,
-                  displayFilter,
-                });
-                void reapplyFilterFocus({
-                  displayFilter,
-                  completedFilterButtonRef,
-                  activeFilterButtonRef,
-                  allFilterButtonRef,
-                }); // added to re-focus on the currently selected filter button
-              }}
-            >
-              Clear Completed
-            </Button>
-          </Group>
-        </Paper>
-        {/* DnD only available when 'All' filter is applied */}
-        {displayFilter === FilteredState.ALL && (
-          <Text
-            style={{
-              fontFamily: '"Josefin Sans", sans-serif',
-              fontSize: "14px",
-              fontWeight: "400",
-              color: mode === Mode.LIGHT ? "lightgrey" : "grey",
-              marginTop: "30px",
-            }}
-          >
-            Drag and drop to reorder list
-          </Text>
-        )}
-      </Container>
+      {/* TO DO LIST TABLE CONTENTS - TABLE + FILTER BUTTONS + DnD TEXT at BOTTOM */}
+      <TableContainer
+        mode={mode}
+        setToDosArrayFull={setToDosArrayFull}
+        toDosArrayFull={toDosArrayFull}
+        setToDosForDisplay={setToDosForDisplay}
+        toDosForDisplay={toDosForDisplay}
+        setItemCount={setItemCount}
+        itemCount={itemCount}
+        setDisplayFilter={setDisplayFilter}
+        displayFilter={displayFilter}
+        setIdToUpdateStatus={setIdToUpdateStatus}
+        setIdToDelete={setIdToDelete}
+        allFilterButtonRef={allFilterButtonRef}
+        activeFilterButtonRef={activeFilterButtonRef}
+        completedFilterButtonRef={completedFilterButtonRef}
+      />
     </>
   );
 }
