@@ -73,7 +73,7 @@ function ToDosTable({
             />
             <CloseButton
               size="lg"
-              className="closeButton"
+              id="closeButton"
               onClick={() => setIdToDelete(toDo.id)} // unique ID
             />
           </Group>

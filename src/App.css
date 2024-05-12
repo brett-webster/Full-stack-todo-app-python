@@ -72,15 +72,14 @@
 .checkBox:hover {
   cursor: pointer;
 }
-
-.groupCheckboxCloseButton:hover .closeButton {
+.groupCheckboxCloseButton:hover #closeButton {
   visibility: visible;
 }
-.closeButton {
+#closeButton {
   background-color: transparent !important;
   visibility: hidden;
 }
-.closeButton:hover {
+#closeButton:hover {
   cursor: pointer;
 }
 

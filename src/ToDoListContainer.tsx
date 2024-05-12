@@ -24,7 +24,8 @@ import {
   filterCompletedOnly,
   reapplyFilterFocus,
 } from "./filterLogic"; // Frontend filter logic (imported above)
-import ToDosTable from "./ToDosTable";
+import ToDosTable from "./ToDosTable"; // Static tables applied for 'Active/Completed' filters
+import ToDosTableDnD from "./ToDosTableDnD"; // DnD only applied for 'All' filter
 
 // --------
 
@@ -158,13 +159,24 @@ function ToDoListContainer({
           p="xl"
           className="toDoListTable"
         >
-          {/* DISPLAY TABLE */}
-          <ToDosTable
-            toDosForDisplay={toDosForDisplay}
-            mode={mode}
-            setIdToUpdateStatus={setIdToUpdateStatus}
-            setIdToDelete={setIdToDelete}
-          />
+          {/* DISPLAY TABLE - allow DnD for 'All' filter, static display for 'Active/Completed' filters (tracking/reconciling re-ordering of partial lists is complicated) */}
+          {displayFilter === FilteredState.ALL ? (
+            <ToDosTableDnD
+              setToDosForDisplay={setToDosForDisplay}
+              toDosForDisplay={toDosForDisplay}
+              setToDosArrayFull={setToDosArrayFull}
+              mode={mode}
+              setIdToUpdateStatus={setIdToUpdateStatus}
+              setIdToDelete={setIdToDelete}
+            />
+          ) : (
+            <ToDosTable
+              toDosForDisplay={toDosForDisplay}
+              mode={mode}
+              setIdToUpdateStatus={setIdToUpdateStatus}
+              setIdToDelete={setIdToDelete}
+            />
+          )}
 
           {/* FOOTER -- TASK COUNT, FILTERS, CLEAR COMPLETED TASKS */}
           <Group position="apart">
@@ -253,6 +265,20 @@ function ToDoListContainer({
             </Button>
           </Group>
         </Paper>
+        {/* DnD only available when 'All' filter is applied */}
+        {displayFilter === FilteredState.ALL && (
+          <Text
+            style={{
+              fontFamily: '"Josefin Sans", sans-serif',
+              fontSize: "14px",
+              fontWeight: "400",
+              color: mode === Mode.LIGHT ? "lightgrey" : "grey",
+              marginTop: "30px",
+            }}
+          >
+            Drag and drop to reorder list
+          </Text>
+        )}
       </Container>
     </>
   );
