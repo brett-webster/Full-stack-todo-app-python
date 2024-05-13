@@ -32,7 +32,7 @@ export const filterActiveOnly = ({
   setDisplayFilter: (value: FilteredState) => void;
   setItemCount: (value: number) => void;
   toDosArrayFull: ToDoType[];
-}): void => {
+}): ToDoType[] => {
   const activeTasks: ToDoType[] = toDosArrayFull.filter(
     (toDo) => !toDo.statusComplete
   );
@@ -43,6 +43,7 @@ export const filterActiveOnly = ({
     (toDo) => toDo.statusComplete === false
   ).length; // Tasks remaining
   setItemCount(taskCountRemaining);
+  return activeTasks; // NOTE: only adding in return value for testing purposes, return value NOT used in app
 };
 
 export const filterCompletedOnly = ({
@@ -55,7 +56,7 @@ export const filterCompletedOnly = ({
   setDisplayFilter: (value: FilteredState) => void;
   setItemCount: (value: number) => void;
   toDosArrayFull: ToDoType[];
-}): void => {
+}): ToDoType[] => {
   const completedTasks: ToDoType[] = toDosArrayFull.filter(
     (toDo) => toDo.statusComplete
   );
@@ -66,6 +67,7 @@ export const filterCompletedOnly = ({
     (toDo) => toDo.statusComplete === true
   ).length; // Tasks completed
   setItemCount(taskCountCompleted);
+  return completedTasks; // NOTE: only adding in return value for testing purposes, return value NOT used in app
 };
 
 // ----------
