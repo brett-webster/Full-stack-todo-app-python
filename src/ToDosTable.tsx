@@ -29,6 +29,7 @@ function ToDosTable({
           No tasks to display
         </div>
         <Divider
+          className="tableDividerMobile"
           style={{
             borderColor: mode === Mode.LIGHT ? "lightgrey" : "#454545",
           }}
@@ -78,6 +79,7 @@ function ToDosTable({
             />
           </Group>
           <Divider
+            className="tableDividerMobile"
             style={{
               borderColor: mode === Mode.LIGHT ? "lightgrey" : "#454545",
             }}

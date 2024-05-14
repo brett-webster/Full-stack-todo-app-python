@@ -122,3 +122,58 @@
   font-weight: 700;
   font-style: normal;
 }
+
+/* style revisions to above CSS for screen width <= 375px */
+@media (max-width: 375px) {
+  #root {
+    padding-left: 1rem;
+    padding-right: 1.5rem;
+  }
+
+  .desktopBackground {
+    width: 100vw;
+  }
+
+  .toDoListHeader {
+    margin-top: 0vh;
+    width: 100%;
+    max-width: 95%;
+  }
+
+  #toDoTitle {
+    font-size: 32px;
+  }
+
+  #newTaskInput {
+    margin-top: 4vh;
+    height: 8vh;
+    width: 100%;
+    max-width: 95%;
+  }
+
+  .toDoListTableContainer {
+    width: 100%;
+    max-width: 95%;
+  }
+
+  .groupCheckboxCloseButton {
+    width: 100%;
+    max-width: 90%;
+  }
+
+  #closeButton {
+    margin-right: -5vw;
+  }
+
+  .tableDividerMobile {
+    width: 70vw;
+  }
+
+  .filterButtonGroup {
+    margin-left: 8vh;
+  }
+
+  #clearCompletedButton {
+    margin-left: 8vh;
+  }
+}

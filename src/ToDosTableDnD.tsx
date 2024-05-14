@@ -39,6 +39,7 @@ function ToDosTableDnD({
           No tasks to display
         </div>
         <Divider
+          className="tableDividerMobile"
           style={{
             borderColor: mode === Mode.LIGHT ? "lightgrey" : "#454545",
           }}
@@ -80,40 +81,49 @@ function ToDosTableDnD({
               {...provided.draggableProps}
               {...provided.dragHandleProps}
             >
-              <Group position="apart" className="groupCheckboxCloseButton">
-                <Checkbox
-                  label={
-                    <span
-                      style={{
-                        color: textColor,
-                        fontSize: "18px",
-                        fontFamily: '"Josefin Sans", sans-serif',
-                      }}
-                    >
-                      {toDo.statusComplete ? <s>{toDo.task}</s> : toDo.task}
-                    </span>
-                  }
-                  className="checkBox"
-                  size="md"
-                  radius="xl"
-                  checked={toDo.statusComplete} // true or false
-                  onChange={() => setIdToUpdateStatus(toDo.id)} // unique ID
-                  style={{
-                    height: "46px",
-                    marginTop: "4px",
-                    // NOTE: this gradient background color also paints the test area in the Mantine component & Mantine does not support linear-gradient coloring directly for the Checkbox alone, so sticking w/ Mantine's standard blue color here
-                    // background:
-                    //   "linear-gradient(hsl(192, 100%, 67%), hsl(280, 87%, 65%))",
-                  }}
-                />
-                <CloseButton
-                  size="lg"
-                  id="closeButton"
-                  onClick={() => setIdToDelete(toDo.id)} // unique ID
-                  style={{ height: "50px", marginTop: "-15px" }}
-                />
-              </Group>
+              <div
+                style={{
+                  width: window.matchMedia("(max-width: 375px)").matches
+                    ? "270px"
+                    : "675px",
+                }} // NOTE: added div wrapper w/ media screen size styling around Group for mobile functionality (inline required here, passing classsNames does not work)
+              >
+                <Group position="apart" className="groupCheckboxCloseButton">
+                  <Checkbox
+                    label={
+                      <span
+                        style={{
+                          color: textColor,
+                          fontSize: "18px",
+                          fontFamily: '"Josefin Sans", sans-serif',
+                        }}
+                      >
+                        {toDo.statusComplete ? <s>{toDo.task}</s> : toDo.task}
+                      </span>
+                    }
+                    className="checkBox"
+                    size="md"
+                    radius="xl"
+                    checked={toDo.statusComplete} // true or false
+                    onChange={() => setIdToUpdateStatus(toDo.id)} // unique ID
+                    style={{
+                      height: "46px",
+                      marginTop: "4px",
+                      // NOTE: this gradient background color also paints the test area in the Mantine component & Mantine does not support linear-gradient coloring directly for the Checkbox alone, so sticking w/ Mantine's standard blue color here
+                      // background:
+                      //   "linear-gradient(hsl(192, 100%, 67%), hsl(280, 87%, 65%))",
+                    }}
+                  />
+                  <CloseButton
+                    size="lg"
+                    id="closeButton"
+                    onClick={() => setIdToDelete(toDo.id)} // unique ID
+                    style={{ height: "50px", marginTop: "-15px" }}
+                  />
+                </Group>
+              </div>
               <Divider
+                className="tableDividerMobile"
                 style={{
                   borderColor: mode === Mode.LIGHT ? "lightgrey" : "#454545",
                 }}

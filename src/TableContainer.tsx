@@ -89,7 +89,7 @@ function TableContainer({
           </Text>
 
           {/* 3 FILTER BUTTONS */}
-          <Group position="center" spacing="xs">
+          <Group className="filterButtonGroup" position="center" spacing="xs">
             <Button
               ref={allFilterButtonRef}
               className="filterButton"
