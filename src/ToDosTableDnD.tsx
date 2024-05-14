@@ -84,8 +84,8 @@ function ToDosTableDnD({
               <div
                 style={{
                   width: window.matchMedia("(max-width: 375px)").matches
-                    ? "270px"
-                    : "675px",
+                    ? "200%"
+                    : "100%",
                 }} // NOTE: added div wrapper w/ media screen size styling around Group for mobile functionality (inline required here, passing classsNames does not work)
               >
                 <Group position="apart" className="groupCheckboxCloseButton">
