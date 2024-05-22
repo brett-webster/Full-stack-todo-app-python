@@ -1,11 +1,4 @@
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useRef,
-  KeyboardEvent,
-  useEffect,
-} from "react";
+import { Dispatch, SetStateAction, useState, useRef, useEffect } from "react";
 import { Input } from "@mantine/core";
 import { ToDoType, FilteredState, Mode } from "../types";
 import ApiRequests from "./apiRequests";
@@ -79,21 +72,41 @@ function ToDoListContainer({
     };
   }, [displayFilter]);
 
-  // helper fxn -- if the user presses the 'Enter' key, increment the total task counter & use this to create a new task using 'setNewTaskToAdd'
-  const handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === "Enter") {
-      if (!totalTaskCount || taskInput === "") return; // early exit if totalTaskCount is null (shouldn't happen, but just in case) or if taskInput is empty
-      setTotalTaskCount((totalTaskCount: number | null) =>
-        totalTaskCount ? totalTaskCount + 1 : 1
-      ); // NOTE: resetting state here does NOT take effect immediately, as there is a lag in incrementing state (hence + 1 below)
-      setNewTaskToAdd({
-        id: totalTaskCount + 1,
-        task: taskInput,
-        statusComplete: false,
-      });
-      setTaskInput(""); // clear the input field after adding the new task
-    }
+  // onSubmit of form Input triggered by user pressing 'Enter' key -- when submitted, increment the total task counter & use this to create a new task using 'setNewTaskToAdd'
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault(); // Prevent form from being submitted in default way
+    if (!totalTaskCount || taskInput === "") return; // early exit if totalTaskCount is null (shouldn't happen, but just in case) or if taskInput is empty
+    setTotalTaskCount((totalTaskCount: number | null) =>
+      totalTaskCount ? totalTaskCount + 1 : 1
+    ); // NOTE: resetting state here does NOT take effect immediately, as there is a lag in incrementing state (hence + 1 below)
+    setNewTaskToAdd({
+      id: totalTaskCount + 1,
+      task: taskInput,
+      statusComplete: false,
+    });
+    setTaskInput(""); // clear the input field after adding the new task
   };
+
+  // Restore focus to top of page or previous position after: adding a new task, updating completed status or light/dark mode change
+  useEffect(() => {
+    window.scrollTo(0, 0); // Scroll to the top of the page after adding a new task
+  }, [totalTaskCount]);
+
+  useEffect(() => {
+    const currentScrollPosition = window.scrollY;
+    // avoids screen flashing/flickering
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, currentScrollPosition); // Scroll back to the most recent position after task completed status change (this is needed because the page re-render is triggered and the scroll position is lost)
+    });
+  }, [idToUpdateStatus]);
+
+  useEffect(() => {
+    const currentScrollPosition = window.scrollY;
+    // avoids screen flashing/flickering
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, currentScrollPosition); // Scroll back to the most recent position after light/dark mode change (this is needed because the page re-render is triggered and the scroll position is lost)
+    });
+  }, [mode]);
 
   // --------
 
@@ -102,15 +115,16 @@ function ToDoListContainer({
       {/* HEADER -- TITLE & LIGHT/DARK MODE ICON */}
       <ToDoHeader mode={mode} setMode={setMode} />
 
-      {/* NEW TASK INPUT FIELD */}
-      <Input
-        placeholder="Add a new task"
-        radius="md"
-        id="newTaskInput"
-        value={taskInput}
-        onChange={(event) => setTaskInput(event.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-      />
+      {/* NEW TASK INPUT FIELD -- WRAPPED IN FORM <div> */}
+      <form onSubmit={handleSubmit}>
+        <Input
+          placeholder="Add a new task"
+          radius="md"
+          id="newTaskInput"
+          value={taskInput}
+          onChange={(event) => setTaskInput(event.currentTarget.value)}
+        />
+      </form>
 
       {/* TO DO LIST TABLE CONTENTS - TABLE + FILTER BUTTONS + DnD TEXT at BOTTOM */}
       <TableContainer

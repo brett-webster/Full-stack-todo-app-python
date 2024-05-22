@@ -3,6 +3,7 @@
 // npm run LINT ------> "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
 // npm run PREVIEW ---> "preview": "NODE_ENV=production node --loader ts-node/esm server/server.ts",
 // npm run SERVER ----> "server": "nodemon --exec 'node --loader ts-node/esm' server/server.ts"
+// npm run TEST ------> "test": "jest --verbose --coverage --watchAll=false --maxWorkers=1"
 
 // "proxy": "http://localhost:3000" (set in package.json config & vite.config.js)
 // HRM for Vite frontend & nodemon for Express backend

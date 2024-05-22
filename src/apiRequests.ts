@@ -123,7 +123,7 @@ function ApiRequests({
 
     const updateTaskStatus = async () => {
       const apiResponse: ToDoType[] = (
-        await axios.put<ToDoType[]>(
+        await axios.patch<ToDoType[]>(
           `/api/updateTodoStatus/${idToUpdateStatus}`,
           {
             toDosArrayFull,

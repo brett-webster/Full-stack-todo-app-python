@@ -16,7 +16,8 @@ function apiLayer(): void {
     return res.status(200).json(revisedToDosArray);
   });
 
-  app.put(
+  // NOTE: not a conventional PUT or PATCH request, as we are NOT updating an entire task object nor passing in partial properties as a body object to be updated, only updating completed status (but doing so by simply toggling the path parameter id's 'statusComplete' property to 'true/false' & updating the respective task object w/in the ToDos array of objects)
+  app.patch(
     "/api/updateTodoStatus/:idToUpdateStatus",
     (req: Request, res: Response): Response => {
       const { toDosArrayFull: currentToDosArray }: RequestBody =

@@ -97,7 +97,7 @@ export const reapplyFilterFocus = ({
 
 // ----------
 
-// Helper function to apply current filter to API response (used for PUT, DELETE - SINGLE TASK)
+// Helper function to apply current filter to API response (used for PATCH, DELETE - SINGLE TASK)
 // exported for use in apiRequests.ts
 export const applyFilterToApiResponse = ({
   displayFilter,

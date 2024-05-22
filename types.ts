@@ -7,7 +7,7 @@ export interface ToDoType {
 
 export interface RequestBody {
   toDosArrayFull: ToDoType[];
-  newTaskToAdd?: ToDoType; // only used in POST request (not in PUT or DELETE) in server/apiLayer.ts
+  newTaskToAdd?: ToDoType; // only used in POST request (not in PATCH or DELETE) in server/apiLayer.ts
 }
 
 export enum Mode {
