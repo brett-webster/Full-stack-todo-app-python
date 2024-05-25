@@ -7,6 +7,7 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd"; // npm i @hello-pangea/dnd
+import { updateSortingOrderPostDnD } from "./apiRequests";
 
 // Component to display the ToDos (DnD) in a table format -- exported for use in ToDoListContainer.tsx
 function ToDosTableDnD({
@@ -55,8 +56,12 @@ function ToDosTableDnD({
     const newItems = [...toDosForDisplay];
     const [removed] = newItems.splice(result.source.index, 1);
     newItems.splice(result.destination.index, 0, removed);
+    // reset sortedRank for each item in the array, starting at index=1 (only upon successful drag & drop)
+    newItems.forEach((item, index) => (item.sortedRank = index + 1));
     setToDosForDisplay(newItems);
     setToDosArrayFull(newItems);
+    // API call to update new sorting order in DB
+    void updateSortingOrderPostDnD({ toDosArrayFull: newItems }); // @typescript-eslint/no-floating-promises
   };
 
   // Tasks to display w/ DnD capability -- map over to toDosForDisplay (filtered, if specified) to generate multiple Groups for display

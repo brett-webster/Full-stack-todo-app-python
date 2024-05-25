@@ -7,13 +7,18 @@ import "./App.css";
 import ToDoListContainer from "./ToDoListContainer";
 
 function App(): JSX.Element {
-  const [mode, setMode] = useState<Mode>(Mode.LIGHT);
+  const [mode, setMode] = useState<Mode>(() => {
+    // Initialize mode from localStorage, defaulting to Mode.LIGHT
+    const savedMode: Mode =
+      localStorage.getItem("lightDarkMode") === "dark" ? Mode.DARK : Mode.LIGHT;
+    return savedMode;
+  });
 
   // -------------------
 
   return (
     <MantineProvider>
-      {/* DISPLAY BACKGROUND IMAGE BASED ON LIGHT/DARK MODE */}
+      {/* DISPLAY BACKGROUND IMAGE BASED ON LIGHT/DARK MODE -- PLACE IN LOCALSTORAGE TO PERSIST ACROSS REFRESHES/SESSIONS */}
       {mode === Mode.LIGHT ? (
         <img
           src={bgDesktopLight}

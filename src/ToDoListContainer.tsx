@@ -46,6 +46,7 @@ function ToDoListContainer({
     idToUpdateStatus,
     setIdToDelete,
     idToDelete,
+    setDisplayFilter,
     displayFilter,
     allFilterButtonRef,
   });

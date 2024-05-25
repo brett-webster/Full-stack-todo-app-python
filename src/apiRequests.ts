@@ -33,13 +33,23 @@ export const deleteAllCompletedTodos = async ({
   setToDosForDisplay(filteredTasksArray);
 };
 
+// PATCH - store/persist new sorting order in DB post successful DnD
+export const updateSortingOrderPostDnD = async ({
+  toDosArrayFull,
+}: {
+  toDosArrayFull: ToDoType[];
+}): Promise<void> => {
+  await axios.patch<ToDoType[]>(`/api/updateSortingOrderPostDnD`, {
+    toDosArrayFull,
+  });
+};
+
 // --------
 
 // API endpoint requests, each triggered by a hook
 function ApiRequests({
   setTotalTaskCount,
   setToDosArrayFull,
-  toDosArrayFull,
   setToDosForDisplay,
   setItemCount,
   setNewTaskToAdd,
@@ -48,6 +58,7 @@ function ApiRequests({
   idToUpdateStatus,
   setIdToDelete,
   idToDelete,
+  setDisplayFilter,
   displayFilter,
   allFilterButtonRef,
 }: {
@@ -62,6 +73,7 @@ function ApiRequests({
   idToUpdateStatus: number | null;
   setIdToDelete: Dispatch<SetStateAction<number | null>>;
   idToDelete: number | null;
+  setDisplayFilter: Dispatch<SetStateAction<FilteredState>>;
   displayFilter: FilteredState;
   allFilterButtonRef: RefObject<HTMLButtonElement>;
 }): void {
@@ -101,7 +113,6 @@ function ApiRequests({
       const apiResponse: ToDoType[] = (
         await axios.post<ToDoType[]>(`/api/addNewTask`, {
           newTaskToAdd,
-          toDosArrayFull,
         })
       )?.data;
       setToDosArrayFull(apiResponse);
@@ -113,6 +124,7 @@ function ApiRequests({
     };
     void addNewTask(); // @typescript-eslint/no-floating-promises <-- ADDED 'void' to eliminate linting error
     setNewTaskToAdd(null); // reset task object to be added to null (to prevent infinite dependency loop)
+    setDisplayFilter(FilteredState.ALL); // reset filter to 'All' after adding a new task (on any filter)
     allFilterButtonRef.current?.focus(); // added to focus on the 'All' filter button on page load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(newTaskToAdd)]);
@@ -124,10 +136,7 @@ function ApiRequests({
     const updateTaskStatus = async () => {
       const apiResponse: ToDoType[] = (
         await axios.patch<ToDoType[]>(
-          `/api/updateTodoStatus/${idToUpdateStatus}`,
-          {
-            toDosArrayFull,
-          }
+          `/api/updateTodoStatus/${idToUpdateStatus}`
         )
       )?.data;
       setToDosArrayFull(apiResponse);
@@ -149,9 +158,7 @@ function ApiRequests({
 
     const deleteTask = async () => {
       const apiResponse: ToDoType[] = (
-        await axios.delete<ToDoType[]>(`/api/deleteTodo/${idToDelete}`, {
-          data: { toDosArrayFull },
-        })
+        await axios.delete<ToDoType[]>(`/api/deleteTodo/${idToDelete}`)
       )?.data;
       setToDosArrayFull(apiResponse);
       const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({

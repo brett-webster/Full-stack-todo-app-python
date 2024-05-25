@@ -8,10 +8,17 @@ It incorporates auto-reload (watchdog), type checking (mypy) and linting (pylint
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, ParseResult
 import json
-from typing import Dict, Any
 import os
 import mimetypes
-import copy
+from postgresql_model import db, ToDoType
+from postgresql_queries import (
+    sort_asc_by_rank_todos_array,
+    select_all_and_assemble_todos_array,
+    add_new_task,
+    update_todo_status,
+    delete_single_todo,
+    delete_all_completed_todos
+)
 
 # ----------
 
@@ -52,18 +59,16 @@ import copy
 
 # ----------
 
-# Sample data
-toDosArray: list[dict[str, Any]] = [
-  { "id": 1, "task": "Sample Task 1", "statusComplete": False },
-  { "id": 2, "task": "Sample Task 2", "statusComplete": False },
-  { "id": 3, "task": "Sample Task 3", "statusComplete": False },
-  { "id": 4, "task": "Sample Task 4", "statusComplete": False },
-  { "id": 5, "task": "Sample Task 5", "statusComplete": True },
-  { "id": 6, "task": "Sample Task 6", "statusComplete": False },
-]
+# CREATE PYTHON VIRTUAL ENVIROMENT
 
-# To Do data structure typing
-ToDoType = Dict[str, int | str | bool]
+# python3 -m venv /Users/sarahkhuwaja/brett/Full-stack-todo-app-python/venv  (CREATE VIRTUAL ENVIRONMENT)
+# source /Users/sarahkhuwaja/brett/Full-stack-todo-app-python/venv/bin/activate  (ACTIVATE VIRTUAL ENVIRONMENT to use or install packages)
+# python3 -m pip install psycopg2-binary  (once ACTIVATED & in venv, can then install packages)
+# deactivate  (DEACTIVATE VIRTUAL ENVIRONMENT once finished work)
+
+# Note: need to locally install all packages in venv (including pylint, mypy) to avoid false flag errors when running linting-typing checks
+# python3 -m pip install pylint
+# python3 -m pip install mypy
 
 # ----------
 
@@ -120,11 +125,15 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         # URL --> http://localhost:3000/api/allTodos
         if parsed_path.path == "/api/allTodos":
+            # SELECT ALL & return latest, sorted todos_array of objects for display on frontend
+            todos_array: list[ToDoType] = select_all_and_assemble_todos_array() # query to fetch all tasks from DB
+            sorted_todos_array: list[ToDoType] = sort_asc_by_rank_todos_array(todos_array)
+
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')  # Allows CORS
             self.end_headers()
-            self.wfile.write(json.dumps(toDosArray).encode('utf-8'))  # return sample data (stringified/serialized to bytes) to client from server for display
+            self.wfile.write(json.dumps(sorted_todos_array).encode('utf-8'))  # return sample data (stringified/serialized to bytes) to client from server for display
 
 
     def do_POST(self) -> None:
@@ -136,17 +145,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         if parsed_path.path == "/api/addNewTask":
             content_length: int = int(self.headers['Content-Length'])
             body: bytes = self.rfile.read(content_length)
-            data: dict[str, ToDoType | list[ToDoType]] = json.loads(body) # convert body data to JSON object (deserialize from bytes & convert to dictionary)
+            data: dict[str, ToDoType] = json.loads(body) # convert body data to JSON object (deserialize from bytes & convert to dictionary)
 
             # Ensure that data['newTaskToAdd'] is a ToDoType
             new_task_to_add: ToDoType = {}
             if 'newTaskToAdd' in data and isinstance(data['newTaskToAdd'], dict):
                 new_task_to_add = data['newTaskToAdd']
-
-            # Ensure that data['toDosArrayFull'] is a list of ToDoType
-            toDos_array_full: list[ToDoType] = []
-            if 'toDosArrayFull' in data and isinstance(data['toDosArrayFull'], list) and all(isinstance(i, dict) for i in data['toDosArrayFull']):
-                toDos_array_full = data['toDosArrayFull']
 
             if not new_task_to_add:  # early exit if no new task object is provided (i.e. is falsy)
                 self.send_response(400)
@@ -162,19 +166,20 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps("New task object shape mismatch").encode('utf-8'))
                 return
 
-            toDos_array_full.append(new_task_to_add)  # add new task object to existing array, if newTaskToAdd is valid
+            todos_array_full = add_new_task(new_task_to_add) # query to add new task to DB
+
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(toDos_array_full).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
+            self.wfile.write(json.dumps(todos_array_full).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
             return
 
 
-    # Note: no PUT required amongst CRUD operations (using PATCH instead)
+    # Note: PUT method is not used in this project, would be inserted here if needed
 
 
     def do_PATCH(self) -> None:
-        """PATCH method (body + path param in URL)"""
+        """PATCH method (path param ONLY in URL for updateTodoStatus, body ONLY for updateSortingOrderPostDnD)"""
         # Note: no error handling if 'user_id' path param is NOT found in body data...simply returns original body data OR if a collision between newBody user_id & pre-existing body data user_id occurs
 
         parsed_path: ParseResult = urlparse(self.path)
@@ -182,62 +187,64 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         # URL --> http://localhost:3000/api/updateTodoStatus/4  (toggles a single task's completedStatus w/ id of 4)
         if parsed_path.path[:21] == "/api/updateTodoStatus":
-            content_length: int = int(self.headers['Content-Length'])
-            body: bytes = self.rfile.read(content_length)
-            data: dict[str, list[ToDoType]] = json.loads(body) # convert body data to JSON object (deserialize from bytes & convert to dictionary)
-            todos_array_full: list[ToDoType] = data['toDosArrayFull'] if 'toDosArrayFull' in data else []
-
-            try:
-                id_to_update_status: int | None = int(path_sections[3])
-            except ValueError:
-                id_to_update_status = None
-
-            revised_todos_array = copy.deepcopy(todos_array_full)  # create deep copy of todos_array_full
-            for todo in revised_todos_array:
-                if todo['id'] == id_to_update_status:
-                    todo['statusComplete'] = not todo['statusComplete']
+            todos_array_final = update_todo_status(path_sections) # query that updates specified task's completedStatus w/in DB
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(revised_todos_array).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
+            self.wfile.write(json.dumps(todos_array_final).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
+
+        # URL --> http://localhost:3000/api/updateSortingOrderPostDnD
+        if parsed_path.path[:30] == "/api/updateSortingOrderPostDnD":
+            content_length: int = int(self.headers['Content-Length'])
+            body: bytes = self.rfile.read(content_length)
+            sorted_data: dict[str, list[ToDoType]] = json.loads(body) # convert body data to JSON object (deserialize from bytes & convert to dictionary)
+
+            db.update_sorted_rank(sorted_data['toDosArrayFull'])  # update sorted_rank values in DB, if data is valid
+            todos_array_full = select_all_and_assemble_todos_array()  # this is now sorted, ascending by sorted_rank key w/in DB
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(todos_array_full).encode('utf-8'))  # return same data body written to DB (stringified/serialized to bytes) back to client
 
 
     def do_DELETE(self) -> None:
-        """DELETE method (body + path param in URL)"""
+        """DELETE method (path param in URL)"""
         # Note: no error handling if 'user_id' path param is NOT found in body data...simply returns original body data
 
         parsed_path: ParseResult = urlparse(self.path)
         path_sections: list[str] = parsed_path.path.split('/')  # localhost:3000/delete/2
 
-        content_length: int = int(self.headers['Content-Length'])
-        body: bytes = self.rfile.read(content_length)
-        data: dict[str, list[ToDoType]] = json.loads(body) # convert body data to JSON object (deserialize from bytes & convert to dictionary)
-        todos_array_full: list[ToDoType] = data['toDosArrayFull'] if 'toDosArrayFull' in data else []
-
         # URL --> http://localhost:3000/api/deleteTodo/3  (delete single task w/ id of 3)
         if parsed_path.path[:15] == "/api/deleteTodo":
-            try:
-                id_to_delete: int | None = int(path_sections[3])
-            except ValueError:
-                id_to_delete = None
-
-            revised_todos_array = [todo for todo in todos_array_full if todo['id'] != id_to_delete]
+            todos_array_final = delete_single_todo(path_sections) # query that deletes specified task w/in DB
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(revised_todos_array).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
+            self.wfile.write(json.dumps(todos_array_final).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
             return
 
         # URL --> http://localhost:3000/api/deleteAllCompletedTodos  (delete ALL tasks w/ statusComplete of True)
         if parsed_path.path == "/api/deleteAllCompletedTodos":
-            revised_todos_array = [todo for todo in todos_array_full if todo['statusComplete'] is False]
+            # SELECT ALL & return latest todos_array of objects to be updated before being returned for display on frontend
+            todos_array_full: list[ToDoType] = select_all_and_assemble_todos_array()
+
+            # Delete ALL completed tasks from DB
+            ids_to_delete: list[int] = [todo['id'] for todo in todos_array_full if todo['statusComplete'] is True and isinstance(todo['id'], int)]
+            if not ids_to_delete:  # early exit to avoid error if no completed tasks are found
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(todos_array_full).encode('utf-8'))  # return unchanged data body (stringified/serialized to bytes) back to client
+                return
+            todos_array_final = delete_all_completed_todos(ids_to_delete) # query that deletes ALL completed tasks w/in DB
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(revised_todos_array).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
+            self.wfile.write(json.dumps(todos_array_final).encode('utf-8'))  # return augmented data body (stringified/serialized to bytes) back to client
             return
 
 # ----------
@@ -259,5 +266,6 @@ try:
     http_server.serve_forever()
 
 except KeyboardInterrupt:
-    print("\nShutting down server...")
+    print("\nShutting down Python server...")
     http_server.server_close()
+    db.close()

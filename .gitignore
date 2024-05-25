@@ -26,5 +26,9 @@ dist-ssr
 # Environment variables
 .env
 
+# Python virtual environment & compiled bytecode
+venv/
+__pycache__/
+
 # Test coverage
 coverage/
