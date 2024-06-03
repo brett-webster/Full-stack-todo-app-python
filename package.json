@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "client": "sleep 1 && vite",
-    "server": "watchmedo auto-restart -d . -R -p '*.py' -- python3 server/basic_server.py",
+    "server": "python3 server/manage.py runserver $npm_package_config_proxy_server_port",
     "dev": "PYTHON_ENV=development npm-run-all -p -r server client",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && npm run collectstatic && npm run updatehtmltemplate",
+    "collectstatic": "find server/staticfiles -maxdepth 1 -type f \\( -name '*.js' -o -name '*.css' \\) -delete && python3 server/manage.py collectstatic --noinput",
+    "updatehtmltemplate": "python3 server/updatehtmltemplate.py",
     "preview": "PYTHON_ENV=production npm run server",
     "eslint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "pylint": "cd server && pylint *.py",
+    "pylint": "cd server && pylint **/*.py",
     "mypy": "cd server && mypy .",
     "linting-typing": "npm-run-all -p eslint pylint mypy",
     "test": "jest --verbose --coverage --watchAll=false --maxWorkers=1"

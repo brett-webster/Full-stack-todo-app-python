@@ -26,9 +26,12 @@ dist-ssr
 # Environment variables
 .env
 
-# Python virtual environment & compiled bytecode
+# Python virtual environment & compiled bytecode / static files & logs
 venv/
 __pycache__/
+*.py[cod]
+staticfiles
+*.log
 
 # Test coverage
 coverage/

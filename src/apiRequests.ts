@@ -5,6 +5,25 @@ import { applyFilterToApiResponse } from "./filterLogic";
 
 // --------
 
+// Grab CSRF token from cookie (required for most Django API calls)
+// Match the name argument w/ cookie names in document.cookie, returning the value of the matched cookie.  If no cookie is matched, return null
+// https://docs.djangoproject.com/en/3.2/ref/csrf/#ajax
+function getCookie(name: string): string | null {
+  let cookieValue: string | null = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies: string[] = document.cookie.split(";");
+    for (const currentCookie of cookies) {
+      const cookie: string = currentCookie.trim();
+      // Does this cookie string begin with the name we want?
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 // DELETE - ALL COMPLETED TASKS (triggered by button click on 'Clear Completed')
 export const deleteAllCompletedTodos = async ({
   setToDosArrayFull,
@@ -22,6 +41,7 @@ export const deleteAllCompletedTodos = async ({
   const apiResponse: ToDoType[] = (
     await axios.delete<ToDoType[]>(`/api/deleteAllCompletedTodos`, {
       data: { toDosArrayFull },
+      headers: { "X-CSRFToken": getCookie("csrftoken") }, // CSRF token header required for non-GET Django API calls
     })
   )?.data;
   setToDosArrayFull(apiResponse);
@@ -39,9 +59,15 @@ export const updateSortingOrderPostDnD = async ({
 }: {
   toDosArrayFull: ToDoType[];
 }): Promise<void> => {
-  await axios.patch<ToDoType[]>(`/api/updateSortingOrderPostDnD`, {
-    toDosArrayFull,
-  });
+  await axios.patch<ToDoType[]>(
+    `/api/updateSortingOrderPostDnD`,
+    {
+      toDosArrayFull,
+    },
+    {
+      headers: { "X-CSRFToken": getCookie("csrftoken") },
+    }
+  );
 };
 
 // --------
@@ -80,6 +106,13 @@ function ApiRequests({
   // READ (on initial page load only)
   useEffect(() => {
     const initialLoadOnly = async () => {
+      // only if 'csrftoken' is NOT present in cookies, ping Django server & have it set new CSRF token as cookie in client browser (required for non-GET Django API calls)
+      if (!getCookie("csrftoken")) {
+        await axios.get<Promise<{ csrftoken: string }>>(
+          "/api/setCSRFtokenAsCookie"
+        );
+      }
+
       const apiResponse: ToDoType[] = (
         await axios.get<ToDoType[]>("/api/allTodos")
       )?.data;
@@ -111,9 +144,15 @@ function ApiRequests({
 
     const addNewTask = async () => {
       const apiResponse: ToDoType[] = (
-        await axios.post<ToDoType[]>(`/api/addNewTask`, {
-          newTaskToAdd,
-        })
+        await axios.post<ToDoType[]>(
+          `/api/addNewTask`,
+          {
+            newTaskToAdd,
+          },
+          {
+            headers: { "X-CSRFToken": getCookie("csrftoken") },
+          }
+        )
       )?.data;
       setToDosArrayFull(apiResponse);
       setToDosForDisplay(apiResponse);
@@ -136,7 +175,11 @@ function ApiRequests({
     const updateTaskStatus = async () => {
       const apiResponse: ToDoType[] = (
         await axios.patch<ToDoType[]>(
-          `/api/updateTodoStatus/${idToUpdateStatus}`
+          `/api/updateTodoStatus/${idToUpdateStatus}`,
+          {}, // data to send with the request (none needed for this PATCH request, but {} required for axios)
+          {
+            headers: { "X-CSRFToken": getCookie("csrftoken") },
+          }
         )
       )?.data;
       setToDosArrayFull(apiResponse);
@@ -158,7 +201,9 @@ function ApiRequests({
 
     const deleteTask = async () => {
       const apiResponse: ToDoType[] = (
-        await axios.delete<ToDoType[]>(`/api/deleteTodo/${idToDelete}`)
+        await axios.delete<ToDoType[]>(`/api/deleteTodo/${idToDelete}`, {
+          headers: { "X-CSRFToken": getCookie("csrftoken") },
+        })
       )?.data;
       setToDosArrayFull(apiResponse);
       const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({

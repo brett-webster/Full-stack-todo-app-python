@@ -76,12 +76,12 @@ function ToDoListContainer({
   // onSubmit of form Input triggered by user pressing 'Enter' key -- when submitted, increment the total task counter & use this to create a new task using 'setNewTaskToAdd'
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault(); // Prevent form from being submitted in default way
-    if (!totalTaskCount || taskInput === "") return; // early exit if totalTaskCount is null (shouldn't happen, but just in case) or if taskInput is empty
+    if (taskInput === "") return; // early exit if taskInput is empty
     setTotalTaskCount((totalTaskCount: number | null) =>
       totalTaskCount ? totalTaskCount + 1 : 1
     ); // NOTE: resetting state here does NOT take effect immediately, as there is a lag in incrementing state (hence + 1 below)
     setNewTaskToAdd({
-      id: totalTaskCount + 1,
+      id: -1, // temporarily assign -1 as flag as signal on backend to PostgreSQL to re-assign via auto-increment
       task: taskInput,
       statusComplete: false,
     });

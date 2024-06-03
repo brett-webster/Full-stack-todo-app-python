@@ -56,8 +56,8 @@ function ToDosTableDnD({
     const newItems = [...toDosForDisplay];
     const [removed] = newItems.splice(result.source.index, 1);
     newItems.splice(result.destination.index, 0, removed);
-    // reset sortedRank for each item in the array, starting at index=1 (only upon successful drag & drop)
-    newItems.forEach((item, index) => (item.sortedRank = index + 1));
+    // reset newSortedRank for each item in the array, starting at index=1 (only upon successful drag & drop)
+    newItems.forEach((item, index) => (item.newSortedRank = index + 1));
     setToDosForDisplay(newItems);
     setToDosArrayFull(newItems);
     // API call to update new sorting order in DB

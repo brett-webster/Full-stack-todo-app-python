@@ -1,7 +1,7 @@
 import { RefObject } from "react";
 export interface ToDoType {
   id: number;
-  sortedRank?: number; // only for DnD (in src/ToDosTableDnD.tsx) to re-shuffle order for storage in DB
+  newSortedRank?: number; // only for DnD (in src/ToDosTableDnD.tsx) to re-shuffle order & send to backend for storage in DB
   task: string;
   statusComplete: boolean;
 }
@@ -28,15 +28,3 @@ export interface FilterButtonRefsType {
   activeFilterButtonRef: RefObject<HTMLButtonElement>;
   allFilterButtonRef: RefObject<HTMLButtonElement>;
 }
-
-// -----------
-
-// Sample data - NO LONGER NEEDED SINCE PERSISTING STORAGE IN DB
-// export const toDosArray: ToDoType[] = [
-//   { id: 1, task: "Sample Task 1", statusComplete: false },
-//   { id: 2, task: "Sample Task 2", statusComplete: false },
-//   { id: 3, task: "Sample Task 3", statusComplete: false },
-//   { id: 4, task: "Sample Task 4", statusComplete: false },
-//   { id: 5, task: "Sample Task 5", statusComplete: true },
-//   { id: 6, task: "Sample Task 6", statusComplete: false },
-// ];
