@@ -4,23 +4,26 @@
 docstring for module
 This module implements a basic Django server with various HTTP methods
 It includes handlers for GET, POST, PUT, PATCH and DELETE requests
-It incorporates auto-reload (built-in), type checking (mypy) and linting (pylint)
+It incorporates Django REST Framework, Django's ORM (built-in), auto-reload (built-in), type checking (mypy) and linting (pylint)
 """
 
-import json
 import psycopg2  # python3 -m pip install psycopg2-binary (must activate venv first) -- https://www.psycopg.org/docs/install.html
-from django.shortcuts import render  # render can be imported to render dynamic HTML templates
+from django.shortcuts import render, get_object_or_404  # render can be imported to render dynamic HTML templates
 from django.views.static import serve
-from django.http import HttpRequest, HttpResponse, JsonResponse, FileResponse
+from django.http import FileResponse
 from django.conf import settings
-from django.views.decorators.http import require_http_methods
 from django.middleware.csrf import get_token
-from django.views.decorators.csrf import csrf_protect  # use '@csrf_exempt' to disable CSRF protection, if needed
 from django.db.models import QuerySet, Max
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
-from django_app.models import Todos, ToDoType
+from rest_framework.views import APIView  # type: ignore
+from rest_framework.request import Request  # type: ignore
+from rest_framework.response import Response  # type: ignore
+from rest_framework import status  # type: ignore
+from rest_framework.exceptions import ValidationError  # type: ignore
 from django_basic_server import initiate_django_server  # import server function to initiate Django server (based on environment)
+from django_app.serializers import TodosSerializer
+from django_app.models import Todos, ToDoType
+from django_app import serializers
 
 # ----------
 
@@ -33,141 +36,101 @@ from django_basic_server import initiate_django_server  # import server function
 initiate_django_server()  # invoke Django server function (sets up configuration based on dev/production environment variable)
 
 # Create your views here.
-def root_path(request: HttpRequest) -> HttpResponse:
+def root_path(request: Request) -> Response:
     """GET method for ROOT path to render index.html"""
     return render(request, 'index.html')
 
-def serve_production_file(request: HttpRequest, filename: str) -> FileResponse:
+def serve_production_file(request: Request, filename: str) -> FileResponse:
     """GET method for serving production files (e.g. index.js, index.css, 2 .jpgs)"""
     return serve(request, filename, settings.STATIC_ROOT)
 
 # --------- HELPER FUNCTIONS ---------
 
-# Map PostgreSQL field names / keys onto frontend field names / keys so response object is compatible w/ frontend expectations
-def map_todos_array_for_frontend(sorted_todos_array_list: list[ToDoType]) -> list[ToDoType]:
-    """docstring for helper function"""
-    todos_array_for_frontend: list[ToDoType] = []
-    for row in sorted_todos_array_list:
-        todos_array_for_frontend.append({
-            "id": row['id'],
-            "newSortedRank": row['sorted_rank'],  # Note: timestamp not currently used/displayed on frontend
-            "task": row['task'],
-            "statusComplete": row['status_complete']
-        })
-    return todos_array_for_frontend
-
 # Map frontend field names / keys onto PostgreSQL field names / keys so response object is compatible w/ backend expectations
-def map_todos_array_for_backend(sorted_todos_array_list: list[ToDoType]) -> list[ToDoType]:
+# Alternatively, could add 'djangorestframework_camel_case.parser.CamelCaseJSONParser' to 'DEFAULT_PARSER_CLASSES' to convert keys from camelCase to snake_case (& vice-versa)
+# https://github.com/vbabiy/djangorestframework-camel-case
+def map_todo_keys_for_backend(todo: ToDoType) -> ToDoType:
     """docstring for helper function"""
-    todos_array_for_backend: list[ToDoType] = []
-    for row in sorted_todos_array_list:
-        todos_array_for_backend.append({
-            "id": row['id'],
-            "newSortedRank": row['newSortedRank'],  # Note: timestamp not currently used
-            "task": row['task'],
-            "status_complete": row['statusComplete']
-        })
-    return todos_array_for_backend
+    backend_todo: ToDoType = {
+            "id": todo['id'],  # Note: timestamp not currently used
+            "sorted_rank": -1,  # -1 is only placeholder (needs to be included to avoid serialized error in Django)
+            "task": todo['task'],
+            "status_complete": todo['statusComplete']
+        }
+    return backend_todo
 
-# Helper function to fetch all tasks from DB and sort by rank (used by various HTTP methods below)
-def fetch_all_and_sort_by_rank() -> list[ToDoType]:
+# Helper function to fetch all tasks from DB, sort by rank, serialize & return results (used by various HTTP methods below)
+def fetch_sort_then_serialize_response() -> Response:
     """docstring for helper function"""
-    # pylint: disable=no-member
-    todos_array: QuerySet = Todos.objects.all()  # Fetch all tasks from DB
-    sorted_todos_array: QuerySet = todos_array.order_by('sorted_rank')  # Sort fetched tasks by rank
-    sorted_todos_array_list: list[ToDoType] = list(sorted_todos_array.values())  # Convert QuerySet --> list of dictionaries
-    return sorted_todos_array_list
+    results: QuerySet = Todos.objects.all().order_by('sorted_rank')  # Fetch all tasks from DB & sort by rank
 
-# Helper function to fetch all tasks from DB, sort by rank, map to frontend syntax & return response (used by most HTTP methods below)
-def fetch_all_todos_then_map_to_frontend_syntax_and_return_response() -> JsonResponse:
-    """docstring for helper function"""
-    sorted_todos_array_list: list[ToDoType] = fetch_all_and_sort_by_rank()  # invoke query helper fxn above
-
-    # Map PostgreSQL field names / keys onto frontend field names / keys so response object is compatible w/ frontend expectations
-    todos_array_for_frontend: list[ToDoType] = map_todos_array_for_frontend(sorted_todos_array_list)
-
-    # Return jsonResponse w/ sorted todos array
-    response: JsonResponse = JsonResponse(todos_array_for_frontend, safe=False)  # safe=False argument used because we're serializing a list, not a dictionary
-    response["Access-Control-Allow-Origin"] = "*"  # Allows CORS
-    return response
+    # Serialize the data for the frontend & return (Note: need to convert keys from snake_case to camelCase on frontend)
+    serializer: serializers.TodosSerializer = TodosSerializer(results, many=True)  # 'many' denotes list of objects
+    return Response(serializer.data)
 
 # --------- HTTP METHODS & ASSOCIATED DJANGO ORM QUERIES ---------
 
 # GET
 # /api/setCSRFtokenAsCookie -- pass CSRF token on pageload to frontend cookie storage to use for non-GET requests
-@require_http_methods(["GET"])
-def set_csrf_token_as_cookie(request: HttpRequest) -> JsonResponse:
-    """GET method"""
-    if request.path == "/api/setCSRFtokenAsCookie":
+class SetCsrfTokenAsCookie(APIView):  # class inherits the APIView class
+    """GET method using Django REST Framework APIView class"""
+    def get(self, request: Request) -> Response:
+        """GET method"""
         csrf_token = get_token(request)
-        response: JsonResponse = JsonResponse({'csrftoken': csrf_token})
+        response = Response({'csrftoken': csrf_token})
         response.set_cookie('csrftoken', csrf_token)  # setting Secure to be True for HTTPS & samesite to 'Strict' for CSRF protection in settings.py
         return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
 
 # GET
 # /api/allTodos
-@require_http_methods(["GET"])
-def get_all_todos(request: HttpRequest) -> JsonResponse:
-    """GET method"""
-    if request.path == "/api/allTodos":
-        response: JsonResponse = fetch_all_todos_then_map_to_frontend_syntax_and_return_response()
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+class GetAllTodos(APIView):
+    """GET method using Django REST Framework APIView class"""
+    # pylint: disable=unused-argument
+    def get(self, request: Request) -> Response:
+        """GET method"""
+        return fetch_sort_then_serialize_response()  # Invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results
 
 
 # POST
 # /api/addNewTask
-@csrf_protect
-@require_http_methods(["POST"])
-def add_new_task(request: HttpRequest) -> JsonResponse:
-    """POST method"""
-    if request.path == "/api/addNewTask":
-        new_task_to_add_obj: dict[str, ToDoType] = json.loads(request.body.decode('utf-8'))  # convert body data to JSON object (deserialize from bytes & convert to dictionary)
-        num_tasks_in_db: int = Todos.objects.count()  # fetch number of tasks in DB
-        max_sorted_rank: int = 0  # default value for max_sorted_rank to avoid error if no tasks in DB
-        if num_tasks_in_db > 0:
-            max_sorted_rank = Todos.objects.aggregate(Max('sorted_rank'))['sorted_rank__max']  # fetch max sorted_rank value from DB (increment by +1 for new task below)
+class AddNewTask(APIView):
+    """POST method using Django REST Framework APIView class"""
+    def post(self, request: Request) -> Response:
+        """POST method"""
+        backend_todo: ToDoType = map_todo_keys_for_backend(request.data.get('newTaskToAdd'))  # map frontend todo keys to backend format so compatible (camelCase --> snake_case)
 
-        # Insert new task into DB & fetch updated todos array list
-        try:
-            Todos.objects.create(sorted_rank=max_sorted_rank + 1, task=new_task_to_add_obj['newTaskToAdd']['task'], status_complete=new_task_to_add_obj['newTaskToAdd']['statusComplete'])
-        except psycopg2.Error as e:
-            print('An error occurred: ', e)
-
-        response: JsonResponse = fetch_all_todos_then_map_to_frontend_syntax_and_return_response()
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+        serializer = TodosSerializer(data=backend_todo)
+        if serializer.is_valid():
+            max_sorted_rank = Todos.objects.aggregate(Max('sorted_rank'))['sorted_rank__max'] or 0  # fetch max sorted_rank value from DB (increment by +1 for new task below)
+            validated_data = serializer.validated_data.copy()  # create copy of validated_data
+            validated_data.pop('sorted_rank', None)  # remove 'sorted_rank' from the copy to avoid duplicate key error when attempting to .create()
+            try:
+                Todos.objects.create(sorted_rank=max_sorted_rank + 1, **validated_data)  # modify sorted_rank & unpack amended validated_data (sans sorted_rank) into create method
+            except psycopg2.IntegrityError as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return fetch_sort_then_serialize_response()  # invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results
+        return ValidationError(serializer.errors)  # return error if serializer is not valid
 
 
 # PATCH
 # /api/updateSortingOrderPostDnD
-@csrf_protect
-@require_http_methods(["PATCH"])
-def update_sorting_order_post_dnd(request: HttpRequest) -> JsonResponse:
-    """PATCH method"""
-    if request.path[:30] == "/api/updateSortingOrderPostDnD":
-        reordered_data: dict[str, list[ToDoType]] = json.loads(request.body.decode('utf-8'))  # convert body data to JSON object (deserialize from bytes & convert to dictionary)
-        backend_todo_list: list[ToDoType] = map_todos_array_for_backend(reordered_data['toDosArrayFull'])  # map todos array for backend so compatible
+class UpdateSortingOrderPostDnD(APIView):
+    """PATCH method using Django REST Framework APIView class"""
+    # pylint: disable=unused-argument
+    def patch(self, request: Request) -> Response:
+        """PATCH method"""
+        reordered_data: list[ToDoType] = request.data['toDosArrayFull']  # grab body sent from frontend request
+        Todos.update_sorted_rank(reordered_data)  # update values in DB, if data is valid
 
-        Todos.update_sorted_rank(backend_todo_list)  # update values in DB, if data is valid
-        sorted_todos_array_list: list[ToDoType] = fetch_all_and_sort_by_rank()  # invoke query helper fxn above
+        return fetch_sort_then_serialize_response()  # Invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results
 
-        # Return jsonResponse w/ sorted todos array
-        response: JsonResponse = JsonResponse(sorted_todos_array_list, safe=False)  # safe=False argument used because we're serializing a list, not a dictionary
-        response["Access-Control-Allow-Origin"] = "*"  # Allows CORS
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+class UpdateTodoStatus(APIView):
+    """PATCH method using Django REST Framework APIView class"""
+    # pylint: disable=unused-argument
+    def patch(self, request: Request, id_to_update: int) -> Response:
+        """PATCH method"""
+        task_to_update: Todos = get_object_or_404(Todos, id=id_to_update)  # Get task from the DB
 
-@csrf_protect
-@require_http_methods(["PATCH"])
-def update_todo_status(request: HttpRequest, id_to_update: int) -> JsonResponse:
-    """PATCH method"""
-    if request.path[:21] == "/api/updateTodoStatus":
-        try:
-            task_to_update = Todos.objects.get(id=id_to_update)  # Get task from the DB
-        except ObjectDoesNotExist:
-            return JsonResponse({"error": "Task not found"}, status=404)
         # Update task in DB (use update() method for multiple fields)
         task_to_update.status_complete = not task_to_update.status_complete  # toggle status_complete key field
         # Make the existing datetime timezone-aware (avoids following CLI error: 'RuntimeWarning: DateTimeField Todos.created_at received a naive datetime (2024-05-29 06:04:16.935156) while time zone support is active.')
@@ -175,45 +138,34 @@ def update_todo_status(request: HttpRequest, id_to_update: int) -> JsonResponse:
         task_to_update.created_at = aware_datetime  # Set created_at to the timezone-aware datetime
         task_to_update.save()
 
-        response: JsonResponse = fetch_all_todos_then_map_to_frontend_syntax_and_return_response()
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+        return fetch_sort_then_serialize_response()  # Invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results
 
 
 # DELETE
 # /api/api/deleteTodo/3
-@csrf_protect
-@require_http_methods(["DELETE"])
-def delete_single_todo(request: HttpRequest, id_to_delete: int) -> JsonResponse:
-    """DELETE method"""
-    if request.path[:15] == "/api/deleteTodo":
-        try:
-            task_to_delete = Todos.objects.get(id=id_to_delete)  # Get task from the DB
-        except ObjectDoesNotExist:
-            return JsonResponse({"error": "Task not found"}, status=404)
+class DeleteSingleTodo(APIView):
+    """DELETE method using Django REST Framework APIView class"""
+    # pylint: disable=unused-argument
+    def delete(self, request: Request, id_to_delete: int) -> Response:
+        """DELETE method"""
+        task_to_delete = get_object_or_404(Todos, id=id_to_delete)  # Get task from the DB
         task_to_delete.delete()  # Delete task from DB
 
-        response: JsonResponse = fetch_all_todos_then_map_to_frontend_syntax_and_return_response()
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+        return fetch_sort_then_serialize_response()  # Invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results
 
-# /api/api/deleteTodo/3
-@csrf_protect
-@require_http_methods(["DELETE"])
-def delete_all_completed_todos(request: HttpRequest) -> JsonResponse:
-    """DELETE method"""
-    if request.path == "/api/deleteAllCompletedTodos":
-        sorted_todos_array_list: list[ToDoType] = fetch_all_and_sort_by_rank()  # invoke query helper fxn above for updated todos array list
+# /api/api/deleteAllCompletedTodos
+class DeleteAllCompletedTodos(APIView):
+    """DELETE method using Django REST Framework APIView class"""
+    # pylint: disable=unused-argument
+    def delete(self, request: Request) -> Response:
+        """DELETE method"""
+        # Get QuerySet of all completed tasks & delete all objects in the QuerySet
+        queryset: QuerySet = Todos.objects.filter(status_complete=True)
 
-        ids_to_delete: list[int] = [todo['id'] for todo in sorted_todos_array_list if todo['status_complete'] is True and isinstance(todo['id'], int)]
         # Error handle in case of no tasks to delete
-        if len(ids_to_delete) == 0:
-            return JsonResponse({"error": "No tasks to delete"}, status=400)
+        if not queryset.exists():
+            return Response({"error": "No tasks to delete"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get QuerySet of all objects whose 'id' is in ids_to_delete list & delete all objects in the QuerySet
-        queryset = Todos.objects.filter(id__in=ids_to_delete)
         queryset.delete()
 
-        response: JsonResponse = fetch_all_todos_then_map_to_frontend_syntax_and_return_response()
-        return response
-    return JsonResponse({"error": "Invalid request"}, status=400)  # error handling
+        return fetch_sort_then_serialize_response()  # Invoke above helper function to fetch all tasks from DB, sort by rank, serialize & return results

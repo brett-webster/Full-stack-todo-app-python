@@ -15,7 +15,7 @@
     "pylint": "cd server && pylint **/*.py",
     "mypy": "cd server && mypy .",
     "linting-typing": "npm-run-all -p eslint pylint mypy",
-    "test": "jest --verbose --coverage --watchAll=false --maxWorkers=1"
+    "test": "cd server && python3 manage.py test && jest --verbose --coverage --watchAll=false --maxWorkers=1"
   },
   "config": {
     "vite_app_server_port": 8080,

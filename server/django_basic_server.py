@@ -38,6 +38,20 @@ import os
 # Run Django server (CLI)
 # python3 server/manage.py runserver [3000]
 
+# Django REST Framework (DRF) - https://www.django-rest-framework.org/
+# Django REST framework provides a set of tools for building Web APIs (e.g., serializers, views, viewsets, authentication, permissions, throttling, pagination, etc.)
+# pip3 install djangorestframework
+# Add 'rest_framework' to INSTALLED_APPS in settings.py
+# Optional:  Add path('api-auth/', include('rest_framework.urls')) to server/django_server/urls.py to enable to enable built-in login and logout views provided by Django REST framework
+# Note:  DRF provides a built-in Postman-like Browsable API allowing interaction with the API via web browser (e.g., GET, POST, PUT, PATCH, DELETE) --> http://localhost:3000/deleteAllCompletedTodos
+
+# Access DB via Django shell (CLI) - manually modify DB (similar to psql)
+# python3 server/manage.py shell
+# from django_app.models import Todos
+# Todos.objects.all()  (view all todos)
+# Todos.objects.create(task='Learn Django', status_complete=False, sorted_rank=-1)  (create a new todo)  <---  'sorted_rank' is set to -1 as a placeholder to avoid error
+# Todos.objects.all().delete()  (delete all todos)
+
 # Run DB migration (manual via CLI, not automated in this project)
 # python3 server/manage.py makemigrations
 # python3 server/manage.py migrate

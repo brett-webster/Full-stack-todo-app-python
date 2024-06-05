@@ -6,6 +6,13 @@ export interface ToDoType {
   statusComplete: boolean;
 }
 
+export interface ToDoTypeBackend {
+  id: number;
+  sorted_rank: number;
+  task: string;
+  status_complete: boolean;
+}
+
 export interface RequestBody {
   toDosArrayFull: ToDoType[];
   newTaskToAdd?: ToDoType; // only used in POST request (not in PATCH or DELETE) in server/apiLayer.ts

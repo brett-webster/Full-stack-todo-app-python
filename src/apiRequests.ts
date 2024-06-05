@@ -1,9 +1,20 @@
 import { Dispatch, SetStateAction, useEffect, RefObject } from "react";
 import axios from "axios";
-import { ToDoType, FilteredState } from "../types";
+import { ToDoType, ToDoTypeBackend, FilteredState } from "../types";
 import { applyFilterToApiResponse } from "./filterLogic";
 
 // --------
+
+// Map backend Python keys to frontend Typescript key format (snake_case --> camelCase for consistency)
+// Alternatively, could use a library like 'camelcase-keys', 'humps' or 'lodash' to automate this process
+function mapKeysFromBackendToFrontend(toDo: ToDoTypeBackend): ToDoType {
+  return {
+    id: toDo.id,
+    task: toDo.task,
+    statusComplete: toDo.status_complete,
+    newSortedRank: toDo.sorted_rank,
+  };
+}
 
 // Grab CSRF token from cookie (required for most Django API calls)
 // Match the name argument w/ cookie names in document.cookie, returning the value of the matched cookie.  If no cookie is matched, return null
@@ -38,16 +49,19 @@ export const deleteAllCompletedTodos = async ({
   setItemCount: Dispatch<SetStateAction<number | null>>;
   displayFilter: FilteredState;
 }): Promise<void> => {
-  const apiResponse: ToDoType[] = (
-    await axios.delete<ToDoType[]>(`/api/deleteAllCompletedTodos`, {
+  const apiResponse: ToDoTypeBackend[] = (
+    await axios.delete<ToDoTypeBackend[]>(`/api/deleteAllCompletedTodos`, {
       data: { toDosArrayFull },
       headers: { "X-CSRFToken": getCookie("csrftoken") }, // CSRF token header required for non-GET Django API calls
     })
   )?.data;
-  setToDosArrayFull(apiResponse);
+  const mappedApiResponse: ToDoType[] = apiResponse.map(
+    mapKeysFromBackendToFrontend
+  );
+  setToDosArrayFull(mappedApiResponse);
   const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
     displayFilter,
-    apiResponse,
+    apiResponse: mappedApiResponse,
     setItemCount,
   });
   setToDosForDisplay(filteredTasksArray);
@@ -113,17 +127,20 @@ function ApiRequests({
         );
       }
 
-      const apiResponse: ToDoType[] = (
-        await axios.get<ToDoType[]>("/api/allTodos")
+      const apiResponse: ToDoTypeBackend[] = (
+        await axios.get<ToDoTypeBackend[]>("/api/allTodos")
       )?.data;
-      setToDosArrayFull(apiResponse);
-      setToDosForDisplay(apiResponse);
+      const mappedApiResponse: ToDoType[] = apiResponse.map(
+        mapKeysFromBackendToFrontend
+      );
+      setToDosArrayFull(mappedApiResponse);
+      setToDosForDisplay(mappedApiResponse);
 
-      const taskCountRemaining: number = apiResponse.filter(
+      const taskCountRemaining: number = mappedApiResponse.filter(
         (toDo) => toDo.statusComplete === false
       ).length; // Tasks remaining
       setItemCount(taskCountRemaining);
-      setTotalTaskCount(apiResponse.length); // used to track and create unique IDs (avoiding dups in case of deletions)
+      setTotalTaskCount(mappedApiResponse.length); // used to track and create unique IDs (avoiding dups in case of deletions)
       allFilterButtonRef.current?.focus(); // added to re-focus on the 'All' filter button
 
       const body = document.body;
@@ -143,8 +160,8 @@ function ApiRequests({
     if (newTaskToAdd === null) return; // early exit if no new task object is provided
 
     const addNewTask = async () => {
-      const apiResponse: ToDoType[] = (
-        await axios.post<ToDoType[]>(
+      const apiResponse: ToDoTypeBackend[] = (
+        await axios.post<ToDoTypeBackend[]>(
           `/api/addNewTask`,
           {
             newTaskToAdd,
@@ -154,9 +171,12 @@ function ApiRequests({
           }
         )
       )?.data;
-      setToDosArrayFull(apiResponse);
-      setToDosForDisplay(apiResponse);
-      const incrementedActiveTaskCount: number = apiResponse.filter(
+      const mappedApiResponse: ToDoType[] = apiResponse.map(
+        mapKeysFromBackendToFrontend
+      );
+      setToDosArrayFull(mappedApiResponse);
+      setToDosForDisplay(mappedApiResponse);
+      const incrementedActiveTaskCount: number = mappedApiResponse.filter(
         (toDo) => toDo.statusComplete === false
       ).length;
       setItemCount(incrementedActiveTaskCount);
@@ -173,8 +193,8 @@ function ApiRequests({
     if (idToUpdateStatus === null) return; // early exit if no ID provided to update its status
 
     const updateTaskStatus = async () => {
-      const apiResponse: ToDoType[] = (
-        await axios.patch<ToDoType[]>(
+      const apiResponse: ToDoTypeBackend[] = (
+        await axios.patch<ToDoTypeBackend[]>(
           `/api/updateTodoStatus/${idToUpdateStatus}`,
           {}, // data to send with the request (none needed for this PATCH request, but {} required for axios)
           {
@@ -182,10 +202,13 @@ function ApiRequests({
           }
         )
       )?.data;
-      setToDosArrayFull(apiResponse);
+      const mappedApiResponse: ToDoType[] = apiResponse.map(
+        mapKeysFromBackendToFrontend
+      );
+      setToDosArrayFull(mappedApiResponse);
       const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
         displayFilter,
-        apiResponse,
+        apiResponse: mappedApiResponse,
         setItemCount,
       });
       setToDosForDisplay(filteredTasksArray);
@@ -200,15 +223,18 @@ function ApiRequests({
     if (idToDelete === null) return; // early exit if no ID to delete
 
     const deleteTask = async () => {
-      const apiResponse: ToDoType[] = (
-        await axios.delete<ToDoType[]>(`/api/deleteTodo/${idToDelete}`, {
+      const apiResponse: ToDoTypeBackend[] = (
+        await axios.delete<ToDoTypeBackend[]>(`/api/deleteTodo/${idToDelete}`, {
           headers: { "X-CSRFToken": getCookie("csrftoken") },
         })
       )?.data;
-      setToDosArrayFull(apiResponse);
+      const mappedApiResponse: ToDoType[] = apiResponse.map(
+        mapKeysFromBackendToFrontend
+      );
+      setToDosArrayFull(mappedApiResponse);
       const filteredTasksArray: ToDoType[] = applyFilterToApiResponse({
         displayFilter,
-        apiResponse,
+        apiResponse: mappedApiResponse,
         setItemCount,
       });
       setToDosForDisplay(filteredTasksArray);

@@ -14,9 +14,7 @@ This module implements the Todos model for the To Do List app
 """
 
 from typing import Dict
-import psycopg2  # python3 -m pip install psycopg2-binary (must activate venv first) -- https://www.psycopg.org/docs/install.html
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction, IntegrityError
 from django.utils import timezone
 
 # ----------
@@ -40,6 +38,10 @@ class Todos(models.Model):
         """docstring for class"""
         db_table = 'todos'  # specify the exact table name used in PostgreSQL DB
 
+    def __str__(self) -> str:
+        """docstring for function - displays task name in Django Admin Panel for improved readability"""
+        return f'{self.task}'
+
     @classmethod
     def seed_db(cls):  # seed database w/ sample data
         """docstring for function - seeding DB transaction"""
@@ -52,9 +54,9 @@ class Todos(models.Model):
                         cls.objects.create(sorted_rank=i, task=f'Sample Task {i}', status_complete=True)
                     else:
                         cls.objects.create(sorted_rank=i, task=f'Sample Task {i}', status_complete=False)
-        except psycopg2.Error as e:
+        except IntegrityError as e:
             # Note:  Transaction roll back in case of error handled automatically / implicitly above by Django
-            print('An error occurred, rolling back transaction: ', e)
+            raise IntegrityError('An error occurred, rolling back transaction: ' + str(e)) from e
 
     @classmethod
     def update_sorted_rank(cls, sorted_todos_array: list[ToDoType]):  # update sorted_rank key fields w/in DB based on latest DnD positioning
@@ -66,15 +68,15 @@ class Todos(models.Model):
                     if todo['id'] != -1:  # check if 'id' key on todo object represents newly added task (-1) that needs to be auto-assigned by PostgreSQL
                         obj = cls.objects.get(id=todo['id'])
                     else:  # if 'id' key in todo object = -1, add new task to DB (changing / auto-incrementing 'id' field in PostgreSQL)
-                        obj = cls.objects.get(task=todo['task'], status_complete=todo['status_complete'])
-                    obj.sorted_rank = todo['newSortedRank']  # update sorted_rank key field
+                        obj = cls.objects.get(task=todo['task'], status_complete=todo['statusComplete'])  # Note: assuming this 2 field combo is unique
+                    obj.sorted_rank = todo['newSortedRank']  # update sorted_rank key field w/in pre-existing DB row
                     # Make the existing datetime timezone-aware (avoids following CLI error: 'RuntimeWarning: DateTimeField Todos.created_at received a naive datetime (2024-05-29 06:04:16.935156) while time zone support is active.')
                     aware_datetime = timezone.make_aware(obj.created_at, timezone=timezone.get_default_timezone())
                     obj.created_at = aware_datetime  # Set created_at to the timezone-aware datetime
                     obj.save()
-        except psycopg2.Error as e:
+        except IntegrityError as e:
             # Note:  Transaction roll back in case of error handled automatically / implicitly above by Django
-            print('An error occurred, rolling back transaction: ', e)
+            raise IntegrityError('An error occurred, rolling back transaction: ' + str(e)) from e
 
 # ----------
 

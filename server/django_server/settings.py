@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 import os  # used for .env variables
 from dotenv import load_dotenv  # used to import in .env variables -- python3 -m pip install python-dotenv
 
@@ -63,19 +64,27 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sessions',
     'django_app',  # need to add this line to register / include the Django app in the larger project
-    'debug_toolbar',  # need to add this line once django-debug-toolbar is installed
+    'rest_framework',  # need to add this line to include Django REST framework
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',  # need to add this line once django-debug-toolbar is installed (after CommonMiddleware)
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Django Debug Toolbar can't be used with tests, so need to add below to exclude it ONLY when running in Python test mode
+if DEBUG and not 'test' in sys.argv:
+    INSTALLED_APPS += ['debug_toolbar']  # need to add this line once django-debug-toolbar is installed
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']  # need to add this line once django-debug-toolbar is installed (after CommonMiddleware)
+
+    DEBUG_TOOLBAR_CONFIG = {
+        'IS_RUNNING_TESTS': False,
+    }
 
 ROOT_URLCONF = 'django_server.urls'
 

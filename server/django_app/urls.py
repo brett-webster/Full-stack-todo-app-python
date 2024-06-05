@@ -11,11 +11,11 @@ from . import views
 # URL Configuration
 urlpatterns = [
     path('', views.root_path, name='root_path'),  # /
-    path('setCSRFtokenAsCookie', views.set_csrf_token_as_cookie),  # /api/setCSRFtokenAsCookie
-    path('allTodos', views.get_all_todos),  # /api/allTodos
-    path('addNewTask', views.add_new_task),  # /api/addNewTask
-    path('updateTodoStatus/<int:id_to_update>', views.update_todo_status),  # /api/updateTodoStatus/4
-    path('updateSortingOrderPostDnD', views.update_sorting_order_post_dnd),  # /api/updateSortingOrderPostDnD
-    path('deleteTodo/<int:id_to_delete>', views.delete_single_todo),  # /api/deleteTodo/3
-    path('deleteAllCompletedTodos', views.delete_all_completed_todos),  # /api/deleteAllCompletedTodos
+    path('setCSRFtokenAsCookie', views.SetCsrfTokenAsCookie.as_view()),  # /api/setCSRFtokenAsCookie
+    path('allTodos', views.GetAllTodos.as_view()),  # /api/allTodos
+    path('addNewTask', views.AddNewTask.as_view()),  # /api/addNewTask
+    path('updateTodoStatus/<int:id_to_update>', views.UpdateTodoStatus.as_view()),  # /api/updateTodoStatus/4
+    path('updateSortingOrderPostDnD', views.UpdateSortingOrderPostDnD.as_view()),  # /api/updateSortingOrderPostDnD
+    path('deleteTodo/<int:id_to_delete>', views.DeleteSingleTodo.as_view()),  # /api/deleteTodo/3
+    path('deleteAllCompletedTodos', views.DeleteAllCompletedTodos.as_view()),  # /api/deleteAllCompletedTodos
 ]
